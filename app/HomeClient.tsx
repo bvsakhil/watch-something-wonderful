@@ -4,16 +4,26 @@ import { useState } from "react";
 import { ReelPlayer } from "./ReelPlayer";
 import { REELS } from "./reels";
 
+function shuffled<T>(arr: readonly T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 export function HomeClient() {
+  const [reels] = useState(() => shuffled(REELS));
   const [currentIndex, setCurrentIndex] = useState(0);
 
   return (
     <>
-      <ReelPlayer reels={REELS} index={currentIndex} />
+      <ReelPlayer reels={reels} index={currentIndex} />
 
       <button
         type="button"
-        onClick={() => setCurrentIndex((i) => (i + 1) % REELS.length)}
+        onClick={() => setCurrentIndex((i) => (i + 1) % reels.length)}
         className="btn-magic rounded-full cursor-pointer"
         style={{ marginTop: "clamp(16px, 4vh, 72px)", padding: "10px 26px" }}
       >
