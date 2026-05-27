@@ -1,3 +1,5 @@
+import { HomeClient } from "./HomeClient";
+
 export default function Home() {
   return (
     <main className="relative min-h-screen w-full overflow-hidden flex flex-col items-center">
@@ -34,35 +36,7 @@ export default function Home() {
         <span className="block">Wonderful</span>
       </h1>
 
-      {/* Movie preview card — drop /public/movie-preview.jpg to populate */}
-      <div
-        className="rounded-[17px] overflow-hidden bg-black/40"
-        style={{ width: "539px", height: "341px", flexShrink: 0, marginTop: "37px" }}
-      >
-        <img
-          src="/movie-preview.gif"
-          alt="Movie preview"
-          className="w-full h-full object-cover"
-        />
-      </div>
-
-      {/* Next button */}
-      <button
-        className="bg-white rounded-full hover:bg-white/90 active:scale-95 transition-all cursor-pointer"
-        style={{ marginTop: "49px", padding: "16px 32px" }}
-      >
-        <span
-          className="font-semibold capitalize"
-          style={{
-            fontFamily: "var(--font-serif), 'Cormorant Garamond', Georgia, serif",
-            fontSize: "24px",
-            color: "#6a91af",
-            lineHeight: 1,
-          }}
-        >
-          next
-        </span>
-      </button>
+      <HomeClient />
     </main>
   );
 }
