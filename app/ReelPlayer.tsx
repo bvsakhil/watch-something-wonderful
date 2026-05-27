@@ -141,10 +141,10 @@ export function ReelPlayer({ reels, index }: Props) {
       ref={containerRef}
       className="crt-scanlines relative overflow-hidden bg-black select-none"
       style={{
-        width: "min(760px, calc(100vw - 48px))",
+        width: "min(760px, calc(100vw - 48px), calc((100dvh - 290px) * 760 / 480))",
         aspectRatio: "760 / 480",
         flexShrink: 0,
-        marginTop: "clamp(28px, 5vh, 56px)",
+        marginTop: "clamp(20px, 4vh, 56px)",
         borderRadius: "clamp(12px, 3vw, 28px)",
         /* dark bezel ring */
         boxShadow: `

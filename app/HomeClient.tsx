@@ -15,7 +15,7 @@ export function HomeClient() {
         type="button"
         onClick={() => setCurrentIndex((i) => (i + 1) % REELS.length)}
         className="btn-magic rounded-full cursor-pointer"
-        style={{ marginTop: "clamp(28px, 6vh, 72px)", padding: "10px 26px" }}
+        style={{ marginTop: "clamp(16px, 4vh, 72px)", padding: "10px 26px" }}
       >
         <span
           className="font-semibold capitalize"
