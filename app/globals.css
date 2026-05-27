@@ -1,10 +1,103 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Awesome Serif";
+  src: url("/fonts/AwesomeSerif-SemiBoldRegular.otf") format("opentype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme inline {
-  --font-serif: var(--font-serif);
+  --font-serif: "Awesome Serif", var(--font-cormorant), Georgia, serif;
 }
 
 /* Tailwind Preflight already resets margins/padding — no custom reset needed. */
 html, body {
   height: 100%;
+}
+
+/* Magic shimmer sweep for the Next button */
+@keyframes magic-shimmer {
+  0%   { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+
+.btn-magic {
+  background: linear-gradient(
+    105deg,
+    #ffffff 0%,
+    #f8f6ff 30%,
+    #ffffff 50%,
+    #f6faff 70%,
+    #ffffff 100%
+  );
+  background-size: 300% auto;
+  animation: magic-shimmer 4s linear infinite;
+  box-shadow:
+    0 0 8px 1px rgba(200, 190, 255, 0.2),
+    0 2px 6px rgba(0, 0, 0, 0.12);
+  transition: box-shadow 0.2s ease, transform 0.15s ease;
+}
+
+.btn-magic:hover {
+  box-shadow:
+    0 0 12px 2px rgba(200, 190, 255, 0.35),
+    0 3px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-magic:active {
+  transform: scale(0.96);
+}
+
+/* ── CRT curved-screen effect ── */
+.crt-scanlines::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 3px,
+    rgba(0, 0, 0, 0.04) 3px,
+    rgba(0, 0, 0, 0.04) 4px
+  );
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 8;
+}
+
+/* ── Custom video player ── */
+.video-progress {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 3px;
+  border-radius: 99px;
+  outline: none;
+  cursor: pointer;
+  transition: height 0.15s ease;
+}
+.video-progress:hover { height: 5px; }
+
+.video-progress::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.6);
+  transition: transform 0.15s ease;
+}
+.video-progress:hover::-webkit-slider-thumb { transform: scale(1.25); }
+
+.video-progress::-moz-range-thumb {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #ffffff;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.6);
 }

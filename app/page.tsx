@@ -2,7 +2,7 @@ import { HomeClient } from "./HomeClient";
 
 export default function Home() {
   return (
-    <main className="relative min-h-screen w-full overflow-hidden flex flex-col items-center">
+    <main className="relative min-h-screen w-full overflow-hidden flex flex-col items-center pb-16">
       {/* Vimeo background — autoplay, loop, muted, no controls via background=1 */}
       <div className="absolute inset-0 -z-10 pointer-events-none">
         <iframe
@@ -22,14 +22,21 @@ export default function Home() {
         />
       </div>
 
-      {/* Title */}
+      {/* Title / logo */}
       <h1
-        className="text-white font-semibold text-center capitalize not-italic"
+        className="text-white text-center capitalize not-italic px-4"
         style={{
-          fontFamily: "var(--font-serif), 'Cormorant Garamond', Georgia, serif",
-          fontSize: "64px",
-          lineHeight: 0.9,
-          marginTop: "71px",
+          fontFamily: "'Awesome Serif', 'Cormorant Garamond', Georgia, serif",
+          fontWeight: 600,
+          fontSize: "clamp(22px, 6vw, 42px)",
+          lineHeight: 1.05,
+          marginTop: "clamp(40px, 8vh, 88px)",
+          letterSpacing: "0.01em",
+          textShadow: `
+            0 0 12px rgba(255, 255, 255, 0.55),
+            0 0 28px rgba(255, 255, 255, 0.30),
+            0 0 55px rgba(255, 255, 255, 0.15)
+          `,
         }}
       >
         <span className="block">Watch Something</span>
