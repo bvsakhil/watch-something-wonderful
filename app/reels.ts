@@ -60,6 +60,20 @@ export const REELS: readonly Reel[] = [
     creatorUrl: "https://www.instagram.com/purav89/",
   },
   {
+    platform: "instagram",
+    src: "/reels/reel-8.mp4",
+    platformUrl: "https://www.instagram.com/reel/DYzzq0wMrv9/",
+    creator: "sphereperformance",
+    creatorUrl: "https://www.instagram.com/sphereperformance/",
+  },
+  {
+    platform: "instagram",
+    src: "/reels/reel-9.mp4",
+    platformUrl: "https://www.instagram.com/reel/DYfpAA7hNTB/",
+    creator: "omneeworld",
+    creatorUrl: "https://www.instagram.com/omneeworld/",
+  },
+  {
     platform: "youtube",
     videoId: "X5Izm1LQfw4",
     platformUrl: "https://www.youtube.com/watch?v=X5Izm1LQfw4",
