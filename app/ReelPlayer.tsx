@@ -67,6 +67,8 @@ export function ReelPlayer({ reels, index }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const shouldAutoPlay = useRef(false);
+  const isFirstRender = useRef(true);
   const reel = reels[index];
 
   const [playing, setPlaying]       = useState(false);
@@ -89,8 +91,13 @@ export function ReelPlayer({ reels, index }: Props) {
 
   useEffect(() => () => { if (hideTimer.current) clearTimeout(hideTimer.current); }, []);
 
-  /* Reset state when reel changes */
+  /* Reset state when reel changes; auto-play on navigation (not first mount) */
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+    } else {
+      shouldAutoPlay.current = true;
+    }
     setPlaying(false);
     setCurrentTime(0);
     setShowControls(true);
@@ -161,6 +168,12 @@ export function ReelPlayer({ reels, index }: Props) {
         onPause={() => { setPlaying(false); setShowControls(true); }}
         onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime ?? 0)}
         onLoadedMetadata={() => setDuration(videoRef.current?.duration ?? 0)}
+        onCanPlay={() => {
+          if (shouldAutoPlay.current) {
+            shouldAutoPlay.current = false;
+            videoRef.current?.play();
+          }
+        }}
         onClick={togglePlay}
       />
 
