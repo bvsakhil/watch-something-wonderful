@@ -92,6 +92,16 @@ html, body {
 }
 .video-progress:hover::-webkit-slider-thumb { transform: scale(1.25); }
 
+/* Footer link */
+.footer-link {
+  color: rgba(255,255,255,0.7);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+.footer-link:hover {
+  color: rgba(255,255,255,0.95);
+}
+
 .video-progress::-moz-range-thumb {
   width: 13px;
   height: 13px;

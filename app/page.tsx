@@ -44,6 +44,27 @@ export default function Home() {
       </h1>
 
       <HomeClient />
+
+      <footer
+        className="mt-auto pt-8"
+        style={{
+          fontFamily: "'Awesome Serif', 'Cormorant Garamond', Georgia, serif",
+          fontSize: "clamp(11px, 2.5vw, 13px)",
+          color: "rgba(255,255,255,0.45)",
+          letterSpacing: "0.02em",
+        }}
+      >
+        made by{" "}
+        <a
+          href="https://x.com/akhil_bvs"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="footer-link"
+        >
+          akhil
+        </a>
+        {" "}and claude code
+      </footer>
     </main>
   );
 }
