@@ -3,6 +3,13 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import type { Reel } from "./reels";
 
+declare global {
+  interface Window {
+    YT: any;
+    onYouTubeIframeAPIReady?: () => void;
+  }
+}
+
 type Props = { reels: readonly Reel[]; index: number };
 
 const SERIF = "'Awesome Serif', 'Cormorant Garamond', Georgia, serif";
@@ -62,20 +69,30 @@ function InstagramIcon() {
     </svg>
   );
 }
+function YouTubeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" width={13} height={13}>
+      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+    </svg>
+  );
+}
 
 export function ReelPlayer({ reels, index }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const ytContainerRef = useRef<HTMLDivElement>(null);
+  const ytPlayerRef = useRef<any>(null);
+  const ytTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const shouldAutoPlay = useRef(false);
   const isFirstRender = useRef(true);
   const reel = reels[index];
 
-  const [playing, setPlaying]       = useState(false);
-  const [muted, setMuted]           = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration]     = useState(0);
-  const [fullscreen, setFullscreen] = useState(false);
+  const [playing, setPlaying]           = useState(false);
+  const [muted, setMuted]               = useState(false);
+  const [currentTime, setCurrentTime]   = useState(0);
+  const [duration, setDuration]         = useState(0);
+  const [fullscreen, setFullscreen]     = useState(false);
   const [showControls, setShowControls] = useState(true);
 
   const progress = duration ? (currentTime / duration) * 100 : 0;
@@ -89,7 +106,10 @@ export function ReelPlayer({ reels, index }: Props) {
     }
   }, [playing]);
 
-  useEffect(() => () => { if (hideTimer.current) clearTimeout(hideTimer.current); }, []);
+  useEffect(() => () => {
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    if (ytTimerRef.current) clearInterval(ytTimerRef.current);
+  }, []);
 
   /* Reset state when reel changes; auto-play on navigation (not first mount) */
   useEffect(() => {
@@ -100,8 +120,10 @@ export function ReelPlayer({ reels, index }: Props) {
     }
     setPlaying(false);
     setCurrentTime(0);
+    setDuration(0);
     setShowControls(true);
     if (hideTimer.current) clearTimeout(hideTimer.current);
+    if (ytTimerRef.current) { clearInterval(ytTimerRef.current); ytTimerRef.current = null; }
   }, [index]);
 
   /* Fullscreen change listener */
@@ -111,13 +133,115 @@ export function ReelPlayer({ reels, index }: Props) {
     return () => document.removeEventListener("fullscreenchange", onFsChange);
   }, []);
 
+  /* ── YouTube iFrame API ── */
+  useEffect(() => {
+    if (reel.platform !== "youtube") {
+      // Destroy any existing YT player when switching away
+      if (ytPlayerRef.current) {
+        try { ytPlayerRef.current.destroy(); } catch {}
+        ytPlayerRef.current = null;
+      }
+      return;
+    }
+
+    const videoId = reel.videoId;
+
+    const initPlayer = () => {
+      if (!ytContainerRef.current) return;
+      // Destroy old player first
+      if (ytPlayerRef.current) {
+        try { ytPlayerRef.current.destroy(); } catch {}
+        ytPlayerRef.current = null;
+      }
+
+      ytPlayerRef.current = new window.YT.Player(ytContainerRef.current, {
+        videoId,
+        width: "100%",
+        height: "100%",
+        playerVars: {
+          controls: 0,
+          disablekb: 1,
+          fs: 0,
+          rel: 0,
+          modestbranding: 1,
+          iv_load_policy: 3,
+          playsinline: 1,
+          enablejsapi: 1,
+        },
+        events: {
+          onReady: (e: any) => {
+            setDuration(e.target.getDuration());
+            if (shouldAutoPlay.current) {
+              shouldAutoPlay.current = false;
+              e.target.playVideo();
+            }
+          },
+          onStateChange: (e: any) => {
+            const { PLAYING, PAUSED, ENDED } = window.YT.PlayerState;
+            if (e.data === PLAYING) {
+              setPlaying(true);
+              bumpControls();
+              if (ytTimerRef.current) clearInterval(ytTimerRef.current);
+              ytTimerRef.current = setInterval(() => {
+                if (ytPlayerRef.current?.getCurrentTime) {
+                  setCurrentTime(ytPlayerRef.current.getCurrentTime());
+                }
+              }, 250);
+            } else if (e.data === PAUSED || e.data === ENDED) {
+              setPlaying(false);
+              setShowControls(true);
+              if (ytTimerRef.current) { clearInterval(ytTimerRef.current); ytTimerRef.current = null; }
+              if (ytPlayerRef.current?.getCurrentTime) {
+                setCurrentTime(ytPlayerRef.current.getCurrentTime());
+              }
+            }
+          },
+        },
+      });
+    };
+
+    if (window.YT?.Player) {
+      initPlayer();
+    } else {
+      // Queue up behind any existing callback
+      const prev = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => {
+        prev?.();
+        initPlayer();
+      };
+      // Load the script only once
+      if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
+        const tag = document.createElement("script");
+        tag.src = "https://www.youtube.com/iframe_api";
+        document.head.appendChild(tag);
+      }
+    }
+
+    return () => {
+      if (ytTimerRef.current) { clearInterval(ytTimerRef.current); ytTimerRef.current = null; }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reel]);
+
+  /* ── Controls ── */
   const togglePlay = () => {
+    if (reel.platform === "youtube") {
+      if (!ytPlayerRef.current) return;
+      playing ? ytPlayerRef.current.pauseVideo() : ytPlayerRef.current.playVideo();
+      return;
+    }
     const v = videoRef.current;
     if (!v) return;
     v.paused ? v.play() : v.pause();
   };
 
   const toggleMute = () => {
+    if (reel.platform === "youtube") {
+      if (!ytPlayerRef.current) return;
+      if (muted) { ytPlayerRef.current.unMute(); setMuted(false); }
+      else        { ytPlayerRef.current.mute();   setMuted(true);  }
+      return;
+    }
     const v = videoRef.current;
     if (!v) return;
     v.muted = !v.muted;
@@ -125,9 +249,15 @@ export function ReelPlayer({ reels, index }: Props) {
   };
 
   const seek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseFloat(e.target.value);
+    if (reel.platform === "youtube") {
+      ytPlayerRef.current?.seekTo(val, true);
+      setCurrentTime(val);
+      return;
+    }
     const v = videoRef.current;
     if (!v) return;
-    v.currentTime = parseFloat(e.target.value);
+    v.currentTime = val;
   };
 
   const toggleFullscreen = () => {
@@ -135,6 +265,8 @@ export function ReelPlayer({ reels, index }: Props) {
     if (!el) return;
     document.fullscreenElement ? document.exitFullscreen() : el.requestFullscreen();
   };
+
+  const isYouTube = reel.platform === "youtube";
 
   return (
     <div
@@ -146,7 +278,6 @@ export function ReelPlayer({ reels, index }: Props) {
         flexShrink: 0,
         marginTop: "clamp(20px, 4vh, 56px)",
         borderRadius: "clamp(12px, 3vw, 28px)",
-        /* dark bezel ring */
         boxShadow: `
           inset 0 0 0 1px rgba(255,255,255,0.06),
           0 0 0 clamp(4px, 1.2vw, 9px) rgba(16,16,16,0.97),
@@ -157,27 +288,40 @@ export function ReelPlayer({ reels, index }: Props) {
       onMouseMove={bumpControls}
       onMouseLeave={() => playing && setShowControls(false)}
     >
-      {/* Video */}
-      <video
-        ref={videoRef}
-        key={reel.src}
-        src={reel.src}
-        playsInline
-        className="w-full h-full object-cover cursor-pointer"
-        onPlay={() => { setPlaying(true); bumpControls(); }}
-        onPause={() => { setPlaying(false); setShowControls(true); }}
-        onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime ?? 0)}
-        onLoadedMetadata={() => setDuration(videoRef.current?.duration ?? 0)}
-        onCanPlay={() => {
-          if (shouldAutoPlay.current) {
-            shouldAutoPlay.current = false;
-            videoRef.current?.play();
-          }
-        }}
-        onClick={togglePlay}
-      />
+      {/* Instagram: native <video> */}
+      {!isYouTube && (
+        <video
+          ref={videoRef}
+          key={(reel as any).src}
+          src={(reel as any).src}
+          playsInline
+          className="w-full h-full object-cover cursor-pointer"
+          onPlay={() => { setPlaying(true); bumpControls(); }}
+          onPause={() => { setPlaying(false); setShowControls(true); }}
+          onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime ?? 0)}
+          onLoadedMetadata={() => setDuration(videoRef.current?.duration ?? 0)}
+          onCanPlay={() => {
+            if (shouldAutoPlay.current) {
+              shouldAutoPlay.current = false;
+              videoRef.current?.play();
+            }
+          }}
+          onClick={togglePlay}
+        />
+      )}
 
-      {/* CRT: edge vignette — simulates convex screen light falloff */}
+      {/* YouTube: iFrame API target */}
+      {isYouTube && (
+        <div
+          key={(reel as any).videoId}
+          ref={ytContainerRef}
+          className="w-full h-full cursor-pointer"
+          onClick={togglePlay}
+          style={{ pointerEvents: playing ? "none" : "auto" }}
+        />
+      )}
+
+      {/* CRT: edge vignette */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -187,7 +331,7 @@ export function ReelPlayer({ reels, index }: Props) {
         }}
       />
 
-      {/* CRT: specular highlight — convex glass reflection */}
+      {/* CRT: specular highlight */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -197,7 +341,7 @@ export function ReelPlayer({ reels, index }: Props) {
         }}
       />
 
-      {/* Top-right tags: creator + Instagram */}
+      {/* Top-right tags: creator + platform link */}
       <div
         className="absolute top-2 right-2 flex items-center gap-1.5"
         style={{ zIndex: 20 }}
@@ -225,7 +369,7 @@ export function ReelPlayer({ reels, index }: Props) {
           </a>
         )}
         <a
-          href={reel.instagramUrl}
+          href={reel.platformUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-1 transition-colors hover:text-white"
@@ -242,12 +386,12 @@ export function ReelPlayer({ reels, index }: Props) {
             whiteSpace: "nowrap",
           }}
         >
-          <InstagramIcon />
-          view on ig
+          {isYouTube ? <YouTubeIcon /> : <InstagramIcon />}
+          {isYouTube ? "view on yt" : "view on ig"}
         </a>
       </div>
 
-      {/* Centre play button — small, clean, visible when paused */}
+      {/* Centre play button */}
       <button
         onClick={togglePlay}
         aria-label={playing ? "Pause" : "Play"}
@@ -280,7 +424,6 @@ export function ReelPlayer({ reels, index }: Props) {
         className="absolute bottom-0 left-0 right-0 transition-opacity duration-300"
         style={{ opacity: showControls ? 1 : 0, pointerEvents: showControls ? "auto" : "none" }}
       >
-        {/* Gradient fade */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
@@ -288,7 +431,6 @@ export function ReelPlayer({ reels, index }: Props) {
           }}
         />
 
-        {/* Controls bar */}
         <div className="relative px-3 pb-3 flex flex-col gap-1.5">
           {/* Progress bar */}
           <div className="flex items-center gap-1.5">
@@ -332,7 +474,6 @@ export function ReelPlayer({ reels, index }: Props) {
 
           {/* Buttons row */}
           <div className="flex items-center justify-between">
-            {/* Left: play + volume */}
             <div className="flex items-center gap-3 text-white/85">
               <button
                 onClick={togglePlay}
@@ -350,7 +491,6 @@ export function ReelPlayer({ reels, index }: Props) {
               </button>
             </div>
 
-            {/* Right: fullscreen */}
             <button
               onClick={toggleFullscreen}
               aria-label={fullscreen ? "Exit fullscreen" : "Fullscreen"}
