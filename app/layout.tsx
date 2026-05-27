@@ -14,7 +14,19 @@ const cormorant = Cormorant_Garamond({
 
 export const metadata: Metadata = {
   title: "Watch Something Wonderful",
-  description: "Discover your next favourite film",
+  description: "Discover tasteful content around the Internet.",
+  openGraph: {
+    title: "Watch Something Wonderful",
+    description: "Discover tasteful content around the Internet.",
+    url: "https://watchsomethingwonderful.com",
+    siteName: "Watch Something Wonderful",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "Watch Something Wonderful",
+    description: "Discover tasteful content around the Internet.",
+  },
 };
 
 export default function RootLayout({
