@@ -2,7 +2,7 @@ import { HomeClient } from "./HomeClient";
 
 export default function Home() {
   return (
-    <main className="relative min-h-screen w-full overflow-hidden flex flex-col items-center pb-16">
+    <main className="relative h-[100dvh] w-full overflow-hidden flex flex-col items-center">
       {/* Vimeo background — autoplay, loop, muted, no controls via background=1 */}
       <div className="absolute inset-0 -z-10 pointer-events-none">
         <iframe
@@ -46,11 +46,11 @@ export default function Home() {
       <HomeClient />
 
       <footer
-        className="mt-auto pt-8"
+        className="mt-auto pb-4"
         style={{
           fontFamily: "'Awesome Serif', 'Cormorant Garamond', Georgia, serif",
-          fontSize: "clamp(11px, 2.5vw, 13px)",
-          color: "rgba(255,255,255,0.45)",
+          fontSize: "clamp(12px, 2.5vw, 14px)",
+          color: "rgba(255,255,255,0.65)",
           letterSpacing: "0.02em",
         }}
       >

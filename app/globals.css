@@ -94,12 +94,12 @@ html, body {
 
 /* Footer link */
 .footer-link {
-  color: rgba(255,255,255,0.7);
+  color: rgba(255,255,255,0.9);
   text-decoration: none;
   transition: color 0.2s ease;
 }
 .footer-link:hover {
-  color: rgba(255,255,255,0.95);
+  color: #ffffff;
 }
 
 .video-progress::-moz-range-thumb {
