@@ -49,44 +49,44 @@ export function HomeClient() {
 
   const triggerSwipeUp = () => {
     if (isTransitioning) return;
-    // Phase 1: slide current video up off screen
+    // Phase 1: slide current video up off screen (200 ms)
     setIsTransitioning(true);
     setDragOffset(1000);
     setTimeout(() => {
-      // Phase 2: change video, place new one below screen instantly
+      // Phase 2: change video, snap new one below screen (no transition)
       goNext();
       setIsTransitioning(false);
-      setDragOffset(-1000); // below screen, no transition
-      // Phase 3: animate new video in from below
+      setDragOffset(-1000);
+      // Phase 3: animate new video in from below (220 ms)
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           setIsTransitioning(true);
           setDragOffset(0);
-          setTimeout(() => setIsTransitioning(false), 320);
+          setTimeout(() => setIsTransitioning(false), 240);
         });
       });
-    }, 280);
+    }, 200);
   };
 
   const triggerSwipeDown = () => {
     if (isTransitioning) return;
-    // Phase 1: slide current video down off screen
+    // Phase 1: slide current video down off screen (200 ms)
     setIsTransitioning(true);
     setDragOffset(-1000);
     setTimeout(() => {
-      // Phase 2: change to previous video, place it above screen instantly
+      // Phase 2: change to previous video, snap it above screen (no transition)
       goPrev();
       setIsTransitioning(false);
-      setDragOffset(1000); // above screen, no transition
-      // Phase 3: animate new video in from above
+      setDragOffset(1000);
+      // Phase 3: animate new video in from above (220 ms)
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           setIsTransitioning(true);
           setDragOffset(0);
-          setTimeout(() => setIsTransitioning(false), 320);
+          setTimeout(() => setIsTransitioning(false), 240);
         });
       });
-    }, 280);
+    }, 200);
   };
 
   const onTouchStart = (e: React.TouchEvent) => {
@@ -137,7 +137,7 @@ export function HomeClient() {
       // Snap back
       setIsTransitioning(true);
       setDragOffset(0);
-      setTimeout(() => setIsTransitioning(false), 280);
+      setTimeout(() => setIsTransitioning(false), 240);
     }
   };
 

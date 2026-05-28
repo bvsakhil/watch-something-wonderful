@@ -113,13 +113,14 @@ export function ReelPlayer({ reels, index, isMobile = false, mobileDragOffset = 
     return () => links.forEach((link) => link.remove());
   }, [index, reels]);
 
-  /* Load only the active reel's video src */
+  /* Load only the active reel's video src.
+     Set synchronously — no null step, no rAF — so the [videoSrc] effect
+     (which calls play()) fires in the same React flush, keeping us inside
+     iOS Safari's user-gesture window from the swipe. */
   useEffect(() => {
-    if (!reel) return;
-    setVideoSrc(null);
+    if (!reel?.src) return;
+    setVideoSrc(reel.src);
     setIsBuffering(true);
-    const frame = requestAnimationFrame(() => setVideoSrc(reel.src));
-    return () => cancelAnimationFrame(frame);
   }, [reel?.src]);
 
   /* Auto-hide controls 2.5 s after last activity while playing */
@@ -238,34 +239,30 @@ export function ReelPlayer({ reels, index, isMobile = false, mobileDragOffset = 
         className="absolute inset-0"
         style={isMobile ? {
           transform: `translateY(${-mobileDragOffset}px)`,
-          transition: mobileIsTransitioning ? "transform 0.30s cubic-bezier(0.4, 0, 0.2, 1)" : "none",
+          transition: mobileIsTransitioning ? "transform 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94)" : "none",
           willChange: "transform",
         } : {}}
       >
-        {videoSrc ? (
-          <video
-            ref={videoRef}
-            key={videoSrc}
-            src={videoSrc}
-            preload="metadata"
-            playsInline
-            className="w-full h-full object-cover cursor-pointer"
-            onPlay={() => { setPlaying(true); setIsBuffering(false); bumpControls(); }}
-            onPause={() => { setPlaying(false); setShowControls(true); }}
-            onWaiting={() => setIsBuffering(true)}
-            onPlaying={() => setIsBuffering(false)}
-            onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime ?? 0)}
-            onLoadedMetadata={() => {
-              setDuration(videoRef.current?.duration ?? 0);
-              setIsBuffering(false);
-            }}
-            onLoadedData={() => { /* autoplay handled in [videoSrc] effect */ }}
-            onCanPlay={() => setIsBuffering(false)}
-            onClick={togglePlay}
-          />
-        ) : (
-          <div className="w-full h-full bg-black" aria-hidden />
-        )}
+        {/* No key — same element persists across reel changes so play() fires
+            on the live element, still within iOS Safari's gesture window. */}
+        <video
+          ref={videoRef}
+          src={videoSrc ?? ""}
+          preload="metadata"
+          playsInline
+          className="w-full h-full object-cover cursor-pointer"
+          onPlay={() => { setPlaying(true); setIsBuffering(false); bumpControls(); }}
+          onPause={() => { setPlaying(false); setShowControls(true); }}
+          onWaiting={() => setIsBuffering(true)}
+          onPlaying={() => setIsBuffering(false)}
+          onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime ?? 0)}
+          onLoadedMetadata={() => {
+            setDuration(videoRef.current?.duration ?? 0);
+            setIsBuffering(false);
+          }}
+          onCanPlay={() => setIsBuffering(false)}
+          onClick={togglePlay}
+        />
       </div>
 
       {isBuffering && videoSrc && (
