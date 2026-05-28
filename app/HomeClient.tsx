@@ -30,6 +30,7 @@ export function HomeClient() {
   // Swipe animation state
   const [dragOffset, setDragOffset] = useState(0);       // px the player is shifted up
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [showSwipeHint, setShowSwipeHint] = useState(true);
 
   const touchStartY = useRef(0);
   const touchStartX = useRef(0);
@@ -44,11 +45,19 @@ export function HomeClient() {
     return () => mq.removeEventListener("change", handler);
   }, []);
 
+  // Auto-hide swipe hint after animation completes
+  useEffect(() => {
+    if (!isMobile) return;
+    const t = setTimeout(() => setShowSwipeHint(false), 2800);
+    return () => clearTimeout(t);
+  }, [isMobile]);
+
   const goNext = () => setCurrentIndex((i) => (i + 1) % reels.length);
   const goPrev = () => setCurrentIndex((i) => (i - 1 + reels.length) % reels.length);
 
   const triggerSwipeUp = () => {
     if (isTransitioning) return;
+    setShowSwipeHint(false);
     // Phase 1: slide current video up off screen (200 ms)
     setIsTransitioning(true);
     setDragOffset(1000);
@@ -70,6 +79,7 @@ export function HomeClient() {
 
   const triggerSwipeDown = () => {
     if (isTransitioning) return;
+    setShowSwipeHint(false);
     // Phase 1: slide current video down off screen (200 ms)
     setIsTransitioning(true);
     setDragOffset(-1000);
@@ -145,7 +155,7 @@ export function HomeClient() {
   if (isMobile) {
     return (
       <div
-        className="flex-1 flex flex-col w-full overflow-hidden"
+        className="relative flex-1 flex flex-col w-full overflow-hidden"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
@@ -158,6 +168,30 @@ export function HomeClient() {
           mobileDragOffset={dragOffset}
           mobileIsTransitioning={isTransitioning}
         />
+
+        {/* Swipe hint — fades out after 2.8 s or on first swipe */}
+        {showSwipeHint && (
+          <div
+            className="swipe-hint absolute bottom-10 left-0 right-0 flex flex-col items-center gap-1 pointer-events-none"
+            style={{ zIndex: 40 }}
+          >
+            <div className="swipe-hint-chevron">
+              <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" width={22} height={22}>
+                <path d="M18 15l-6-6-6 6" />
+              </svg>
+            </div>
+            <span
+              style={{
+                fontFamily: "'Awesome Serif', 'Cormorant Garamond', Georgia, serif",
+                fontSize: "13px",
+                color: "rgba(255,255,255,0.8)",
+                letterSpacing: "0.06em",
+              }}
+            >
+              swipe up
+            </span>
+          </div>
+        )}
       </div>
     );
   }

@@ -92,6 +92,22 @@ html, body {
 }
 .video-progress:hover::-webkit-slider-thumb { transform: scale(1.25); }
 
+/* ── Swipe hint indicator (mobile) ── */
+@keyframes swipe-hint-bounce {
+  0%, 100% { transform: translateY(0px);  opacity: 0.85; }
+  50%       { transform: translateY(-9px); opacity: 1;    }
+}
+@keyframes swipe-hint-fade {
+  0%,  60% { opacity: 1; }
+  100%     { opacity: 0; }
+}
+.swipe-hint {
+  animation: swipe-hint-fade 2.8s ease-in-out forwards;
+}
+.swipe-hint-chevron {
+  animation: swipe-hint-bounce 1.1s ease-in-out infinite;
+}
+
 /* Footer link */
 .footer-link {
   color: rgba(255,255,255,0.9);
