@@ -90,9 +90,37 @@ export function ReelPlayer({ reels, index, isMobile = false, mobileDragOffset = 
   const [duration, setDuration]         = useState(0);
   const [fullscreen, setFullscreen]     = useState(false);
   const [showControls, setShowControls] = useState(true);
+  const [isBuffering, setIsBuffering]   = useState(false);
+  const [videoSrc, setVideoSrc]         = useState<string | null>(null);
 
   const progress = duration ? (currentTime / duration) * 100 : 0;
-  const isYouTube = reel.platform === "youtube";
+  const isYouTube = reel?.platform === "youtube";
+
+  /* Prefetch next/prev videos without decoding them */
+  useEffect(() => {
+    if (reels.length < 2) return;
+    const adjacent = [
+      reels[(index + 1) % reels.length]?.src,
+      reels[(index - 1 + reels.length) % reels.length]?.src,
+    ];
+    const links = adjacent.map((href) => {
+      const link = document.createElement("link");
+      link.rel = "prefetch";
+      link.href = href;
+      document.head.appendChild(link);
+      return link;
+    });
+    return () => links.forEach((link) => link.remove());
+  }, [index, reels]);
+
+  /* Load only the active reel's video src */
+  useEffect(() => {
+    if (!reel) return;
+    setVideoSrc(null);
+    setIsBuffering(true);
+    const frame = requestAnimationFrame(() => setVideoSrc(reel.src));
+    return () => cancelAnimationFrame(frame);
+  }, [reel?.src]);
 
   /* Auto-hide controls 2.5 s after last activity while playing */
   const bumpControls = useCallback(() => {
@@ -118,8 +146,17 @@ export function ReelPlayer({ reels, index, isMobile = false, mobileDragOffset = 
     setCurrentTime(0);
     setDuration(0);
     setShowControls(true);
+    setIsBuffering(true);
     if (hideTimer.current) clearTimeout(hideTimer.current);
   }, [index]);
+
+  /* Escalate preload when navigating so the next reel starts quickly */
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !videoSrc) return;
+    video.preload = shouldAutoPlay.current ? "auto" : "metadata";
+    video.load();
+  }, [videoSrc]);
 
   /* Fullscreen change listener */
   useEffect(() => {
@@ -132,6 +169,10 @@ export function ReelPlayer({ reels, index, isMobile = false, mobileDragOffset = 
   const togglePlay = () => {
     const v = videoRef.current;
     if (!v) return;
+    if (v.preload === "metadata") {
+      v.preload = "auto";
+      v.load();
+    }
     v.paused ? v.play() : v.pause();
   };
 
@@ -153,6 +194,8 @@ export function ReelPlayer({ reels, index, isMobile = false, mobileDragOffset = 
     if (!el) return;
     document.fullscreenElement ? document.exitFullscreen() : el.requestFullscreen();
   };
+
+  if (!reel) return null;
 
   return (
     <div
@@ -190,31 +233,59 @@ export function ReelPlayer({ reels, index, isMobile = false, mobileDragOffset = 
           willChange: "transform",
         } : {}}
       >
-        <video
-          ref={videoRef}
-          key={reel.src}
-          src={reel.src}
-          playsInline
-          className="w-full h-full object-cover cursor-pointer"
-          onPlay={() => { setPlaying(true); bumpControls(); }}
-          onPause={() => { setPlaying(false); setShowControls(true); }}
-          onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime ?? 0)}
-          onLoadedMetadata={() => setDuration(videoRef.current?.duration ?? 0)}
-          onLoadedData={() => {
-            if (shouldAutoPlay.current) {
-              shouldAutoPlay.current = false;
-              videoRef.current?.play().catch(() => {});
-            }
-          }}
-          onCanPlay={() => {
-            if (shouldAutoPlay.current) {
-              shouldAutoPlay.current = false;
-              videoRef.current?.play().catch(() => {});
-            }
-          }}
-          onClick={togglePlay}
-        />
+        {videoSrc ? (
+          <video
+            ref={videoRef}
+            key={videoSrc}
+            src={videoSrc}
+            preload="metadata"
+            playsInline
+            className="w-full h-full object-cover cursor-pointer"
+            onPlay={() => { setPlaying(true); setIsBuffering(false); bumpControls(); }}
+            onPause={() => { setPlaying(false); setShowControls(true); }}
+            onWaiting={() => setIsBuffering(true)}
+            onPlaying={() => setIsBuffering(false)}
+            onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime ?? 0)}
+            onLoadedMetadata={() => {
+              setDuration(videoRef.current?.duration ?? 0);
+              setIsBuffering(false);
+            }}
+            onLoadedData={() => {
+              if (shouldAutoPlay.current) {
+                shouldAutoPlay.current = false;
+                videoRef.current?.play().catch(() => {});
+              }
+            }}
+            onCanPlay={() => {
+              setIsBuffering(false);
+              if (shouldAutoPlay.current) {
+                shouldAutoPlay.current = false;
+                videoRef.current?.play().catch(() => {});
+              }
+            }}
+            onClick={togglePlay}
+          />
+        ) : (
+          <div className="w-full h-full bg-black" aria-hidden />
+        )}
       </div>
+
+      {isBuffering && videoSrc && (
+        <div
+          className="absolute inset-0 flex items-center justify-center pointer-events-none"
+          style={{ zIndex: 14 }}
+          aria-label="Loading video"
+        >
+          <div
+            className="rounded-full animate-pulse"
+            style={{
+              width: 36,
+              height: 36,
+              background: "rgba(255,255,255,0.25)",
+            }}
+          />
+        </div>
+      )}
 
       {/* CRT: edge vignette */}
       <div

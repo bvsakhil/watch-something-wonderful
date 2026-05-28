@@ -16,7 +16,7 @@ type YouTubeVideo = {
 
 export type Reel = InstagramReel | YouTubeVideo;
 
-export const INSTAGRAM_REELS: readonly InstagramReel[] = [
+export const MANUAL_INSTAGRAM_REELS: readonly InstagramReel[] = [
   {
     platform: "instagram",
     src: "/reels/reel-1.mp4",
@@ -84,5 +84,3 @@ export const YOUTUBE_VIDEOS: readonly YouTubeVideo[] = [
     creatorUrl: "https://www.youtube.com/@high5toons",
   },
 ];
-
-export const REELS: readonly Reel[] = [...INSTAGRAM_REELS, ...YOUTUBE_VIDEOS];

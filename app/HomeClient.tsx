@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { ReelPlayer } from "./ReelPlayer";
-import { INSTAGRAM_REELS, YOUTUBE_VIDEOS } from "./reels";
+import { MANUAL_INSTAGRAM_REELS, YOUTUBE_VIDEOS, type Reel } from "./reels";
 
 function shuffled<T>(arr: readonly T[]): T[] {
   const a = [...arr];
@@ -14,9 +14,18 @@ function shuffled<T>(arr: readonly T[]): T[] {
 }
 
 export function HomeClient() {
-  const [reels] = useState(() => shuffled([...INSTAGRAM_REELS, ...YOUTUBE_VIDEOS]));
+  const [reels, setReels] = useState<Reel[]>(() =>
+    shuffled([...MANUAL_INSTAGRAM_REELS, ...YOUTUBE_VIDEOS]),
+  );
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
+
+  // Lazy-load synced reels manifest after first paint (videos still load one-at-a-time in player)
+  useEffect(() => {
+    import("../data/synced-instagram-reels.json").then(({ default: synced }) => {
+      setReels((current) => [...current, ...shuffled(synced as Reel[])]);
+    });
+  }, []);
 
   // Swipe animation state
   const [dragOffset, setDragOffset] = useState(0);       // px the player is shifted up
