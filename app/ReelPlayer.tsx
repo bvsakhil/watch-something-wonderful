@@ -150,12 +150,21 @@ export function ReelPlayer({ reels, index, isMobile = false, mobileDragOffset = 
     if (hideTimer.current) clearTimeout(hideTimer.current);
   }, [index]);
 
-  /* Escalate preload when navigating so the next reel starts quickly */
+  /* Escalate preload when navigating; call play() immediately while still
+     inside iOS Safari's user-gesture window (~1 s from swipe touchend).
+     Waiting for onLoadedData / onCanPlay is too late — those fire async. */
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !videoSrc) return;
-    video.preload = shouldAutoPlay.current ? "auto" : "metadata";
-    video.load();
+    if (shouldAutoPlay.current) {
+      shouldAutoPlay.current = false;
+      video.preload = "auto";
+      video.load();
+      video.play().catch(() => {});   // iOS honours play() here — still in gesture window
+    } else {
+      video.preload = "metadata";
+      video.load();
+    }
   }, [videoSrc]);
 
   /* Fullscreen change listener */
@@ -250,19 +259,8 @@ export function ReelPlayer({ reels, index, isMobile = false, mobileDragOffset = 
               setDuration(videoRef.current?.duration ?? 0);
               setIsBuffering(false);
             }}
-            onLoadedData={() => {
-              if (shouldAutoPlay.current) {
-                shouldAutoPlay.current = false;
-                videoRef.current?.play().catch(() => {});
-              }
-            }}
-            onCanPlay={() => {
-              setIsBuffering(false);
-              if (shouldAutoPlay.current) {
-                shouldAutoPlay.current = false;
-                videoRef.current?.play().catch(() => {});
-              }
-            }}
+            onLoadedData={() => { /* autoplay handled in [videoSrc] effect */ }}
+            onCanPlay={() => setIsBuffering(false)}
             onClick={togglePlay}
           />
         ) : (
