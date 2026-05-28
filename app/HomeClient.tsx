@@ -116,20 +116,14 @@ export function HomeClient() {
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
       >
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            transform: `translateY(${-dragOffset}px)`,
-            transition: isTransitioning
-              ? "transform 0.30s cubic-bezier(0.4, 0, 0.2, 1)"
-              : "none",
-            willChange: "transform",
-          }}
-        >
-          <ReelPlayer reels={reels} index={currentIndex} isMobile />
-        </div>
+        {/* Player frame is fixed — only video content inside slides */}
+        <ReelPlayer
+          reels={reels}
+          index={currentIndex}
+          isMobile
+          mobileDragOffset={dragOffset}
+          mobileIsTransitioning={isTransitioning}
+        />
       </div>
     );
   }

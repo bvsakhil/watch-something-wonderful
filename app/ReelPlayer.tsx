@@ -10,7 +10,13 @@ declare global {
   }
 }
 
-type Props = { reels: readonly Reel[]; index: number; isMobile?: boolean };
+type Props = {
+  reels: readonly Reel[];
+  index: number;
+  isMobile?: boolean;
+  mobileDragOffset?: number;
+  mobileIsTransitioning?: boolean;
+};
 
 const SERIF = "'Awesome Serif', 'Cormorant Garamond', Georgia, serif";
 
@@ -77,7 +83,7 @@ function YouTubeIcon() {
   );
 }
 
-export function ReelPlayer({ reels, index, isMobile = false }: Props) {
+export function ReelPlayer({ reels, index, isMobile = false, mobileDragOffset = 0, mobileIsTransitioning = false }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const ytContainerRef = useRef<HTMLDivElement>(null);
@@ -273,11 +279,11 @@ export function ReelPlayer({ reels, index, isMobile = false }: Props) {
       ref={containerRef}
       className="crt-scanlines relative overflow-hidden bg-black select-none"
       style={isMobile ? {
-        /* Full-bleed — no bezel, no radius — exactly like Instagram */
         flex: 1,
         width: "100%",
-        borderRadius: 0,
+        borderRadius: "22px 22px 0 0",
         boxShadow: "none",
+        overflow: "hidden",
       } : {
         /* Landscape 760×480 */
         width: "min(760px, calc(100vw - 48px), calc((100dvh - 290px) * 760 / 480))",
@@ -295,38 +301,48 @@ export function ReelPlayer({ reels, index, isMobile = false }: Props) {
       onMouseMove={bumpControls}
       onMouseLeave={() => playing && setShowControls(false)}
     >
-      {/* Instagram: native <video> */}
-      {!isYouTube && (
-        <video
-          ref={videoRef}
-          key={(reel as any).src}
-          src={(reel as any).src}
-          playsInline
-          className="w-full h-full object-cover cursor-pointer"
-          onPlay={() => { setPlaying(true); bumpControls(); }}
-          onPause={() => { setPlaying(false); setShowControls(true); }}
-          onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime ?? 0)}
-          onLoadedMetadata={() => setDuration(videoRef.current?.duration ?? 0)}
-          onCanPlay={() => {
-            if (shouldAutoPlay.current) {
-              shouldAutoPlay.current = false;
-              videoRef.current?.play();
-            }
-          }}
-          onClick={togglePlay}
-        />
-      )}
+      {/* Video layer — only this slides on mobile swipe */}
+      <div
+        className="absolute inset-0"
+        style={isMobile ? {
+          transform: `translateY(${-mobileDragOffset}px)`,
+          transition: mobileIsTransitioning ? "transform 0.30s cubic-bezier(0.4, 0, 0.2, 1)" : "none",
+          willChange: "transform",
+        } : {}}
+      >
+        {/* Instagram: native <video> */}
+        {!isYouTube && (
+          <video
+            ref={videoRef}
+            key={(reel as any).src}
+            src={(reel as any).src}
+            playsInline
+            className="w-full h-full object-cover cursor-pointer"
+            onPlay={() => { setPlaying(true); bumpControls(); }}
+            onPause={() => { setPlaying(false); setShowControls(true); }}
+            onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime ?? 0)}
+            onLoadedMetadata={() => setDuration(videoRef.current?.duration ?? 0)}
+            onCanPlay={() => {
+              if (shouldAutoPlay.current) {
+                shouldAutoPlay.current = false;
+                videoRef.current?.play();
+              }
+            }}
+            onClick={togglePlay}
+          />
+        )}
 
-      {/* YouTube: iFrame API target */}
-      {isYouTube && (
-        <div
-          key={(reel as any).videoId}
-          ref={ytContainerRef}
-          className="w-full h-full cursor-pointer"
-          onClick={togglePlay}
-          style={{ pointerEvents: playing ? "none" : "auto" }}
-        />
-      )}
+        {/* YouTube: iFrame API target */}
+        {isYouTube && (
+          <div
+            key={(reel as any).videoId}
+            ref={ytContainerRef}
+            className="w-full h-full cursor-pointer"
+            onClick={togglePlay}
+            style={{ pointerEvents: playing ? "none" : "auto" }}
+          />
+        )}
+      </div>
 
       {/* CRT: edge vignette */}
       <div
