@@ -273,16 +273,13 @@ export function ReelPlayer({ reels, index, isMobile = false }: Props) {
       ref={containerRef}
       className="crt-scanlines relative overflow-hidden bg-black select-none"
       style={isMobile ? {
-        /* Portrait 9:16 — fills available vertical space */
-        width: "min(88vw, calc((100dvh - 160px) * 9 / 16))",
-        aspectRatio: "9 / 16",
-        flexShrink: 0,
-        borderRadius: "clamp(16px, 4vw, 28px)",
+        /* Full-width, fills remaining height below title */
+        flex: 1,
+        width: "100%",
+        borderRadius: "20px 20px 0 0",
         boxShadow: `
           inset 0 0 0 1px rgba(255,255,255,0.06),
-          0 0 0 3px rgba(16,16,16,0.97),
-          0 0 0 5px rgba(38,38,38,0.75),
-          0 12px 40px rgba(0,0,0,0.7)
+          0 -4px 32px rgba(0,0,0,0.5)
         `,
       } : {
         /* Landscape 760×480 */

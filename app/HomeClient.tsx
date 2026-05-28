@@ -17,8 +17,15 @@ export function HomeClient() {
   const [reels] = useState(() => shuffled(REELS));
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
+
+  // Swipe animation state
+  const [dragOffset, setDragOffset] = useState(0);       // px the player is shifted up
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
   const touchStartY = useRef(0);
+  const touchStartX = useRef(0);
   const touchStartTime = useRef(0);
+  const isSwipingVertically = useRef<boolean | null>(null); // null = undecided
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 639px)");
@@ -31,42 +38,98 @@ export function HomeClient() {
   const goNext = () => setCurrentIndex((i) => (i + 1) % reels.length);
   const goPrev = () => setCurrentIndex((i) => (i - 1 + reels.length) % reels.length);
 
-  const onTouchStart = (e: React.TouchEvent) => {
-    touchStartY.current = e.touches[0].clientY;
-    touchStartTime.current = Date.now();
+  const triggerSwipeUp = () => {
+    if (isTransitioning) return;
+    // Phase 1: slide current video up off screen
+    setIsTransitioning(true);
+    setDragOffset(1000);
+    setTimeout(() => {
+      // Phase 2: change video, place new one below screen instantly
+      goNext();
+      setIsTransitioning(false);
+      setDragOffset(-1000); // below screen, no transition
+      // Phase 3: animate new video in from below
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setIsTransitioning(true);
+          setDragOffset(0);
+          setTimeout(() => setIsTransitioning(false), 320);
+        });
+      });
+    }, 280);
   };
 
-  const onTouchEnd = (e: React.TouchEvent) => {
-    const deltaY = touchStartY.current - e.changedTouches[0].clientY;
-    const elapsed = Date.now() - touchStartTime.current;
-    if (elapsed < 600 && Math.abs(deltaY) > 50) {
-      deltaY > 0 ? goNext() : goPrev();
+  const onTouchStart = (e: React.TouchEvent) => {
+    if (isTransitioning) return;
+    touchStartY.current = e.touches[0].clientY;
+    touchStartX.current = e.touches[0].clientX;
+    touchStartTime.current = Date.now();
+    isSwipingVertically.current = null;
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (isTransitioning) return;
+    const dy = touchStartY.current - e.touches[0].clientY;
+    const dx = Math.abs(e.touches[0].clientX - touchStartX.current);
+
+    // Lock direction on first move
+    if (isSwipingVertically.current === null) {
+      if (Math.abs(dy) < 6 && dx < 6) return; // too small to decide
+      isSwipingVertically.current = Math.abs(dy) > dx;
+    }
+
+    if (!isSwipingVertically.current) return; // horizontal swipe — let browser handle
+
+    e.preventDefault(); // prevent page scroll
+    if (dy > 0) {
+      // Swipe up — slight resistance near the top
+      setDragOffset(Math.min(dy * 0.88, 800));
+    } else {
+      // Slight pull-down resistance
+      setDragOffset(Math.max(dy * 0.25, -55));
     }
   };
 
-  /* ── Mobile: vertical reel experience ── */
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (isTransitioning) return;
+    const dy = touchStartY.current - e.changedTouches[0].clientY;
+    const elapsed = Date.now() - touchStartTime.current;
+    const isFlick = elapsed < 350 && dy > 35;
+    const isDrag = dy > 110;
+
+    if (isFlick || isDrag) {
+      triggerSwipeUp();
+    } else {
+      // Snap back
+      setIsTransitioning(true);
+      setDragOffset(0);
+      setTimeout(() => setIsTransitioning(false), 280);
+    }
+  };
+
+  /* ── Mobile: full-width reel experience ── */
   if (isMobile) {
     return (
       <div
-        className="flex-1 flex flex-col items-center justify-center w-full"
+        className="flex-1 flex flex-col w-full overflow-hidden"
         onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
-        style={{ touchAction: "pan-x" }}
       >
-        <ReelPlayer reels={reels} index={currentIndex} isMobile />
-
-        {/* Swipe hint */}
-        <p
+        <div
           style={{
-            fontFamily: "'Awesome Serif', 'Cormorant Garamond', Georgia, serif",
-            fontSize: 12,
-            color: "rgba(255,255,255,0.4)",
-            marginTop: 12,
-            letterSpacing: "0.04em",
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            transform: `translateY(${-dragOffset}px)`,
+            transition: isTransitioning
+              ? "transform 0.30s cubic-bezier(0.4, 0, 0.2, 1)"
+              : "none",
+            willChange: "transform",
           }}
         >
-          swipe up for next
-        </p>
+          <ReelPlayer reels={reels} index={currentIndex} isMobile />
+        </div>
       </div>
     );
   }

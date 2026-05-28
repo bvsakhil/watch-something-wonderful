@@ -46,7 +46,7 @@ export default function Home() {
       <HomeClient />
 
       <footer
-        className="mt-auto pb-4"
+        className="mt-auto pb-4 hidden sm:block"
         style={{
           fontFamily: "'Awesome Serif', 'Cormorant Garamond', Georgia, serif",
           fontSize: "clamp(12px, 2.5vw, 14px)",
