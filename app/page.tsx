@@ -22,9 +22,12 @@ export default function Home() {
         />
       </div>
 
-      {/* Title / logo */}
+      {/* Title / logo
+          Mobile  → absolute overlay so the player fills 100dvh edge-to-edge.
+                    pointer-events-none lets swipe touches pass through to the player.
+          Desktop → back in normal flow (sm:static) with margins for spacing. */}
       <h1
-        className="text-white text-center capitalize not-italic px-4"
+        className="text-white text-center capitalize not-italic px-4 pointer-events-none absolute sm:static left-0 right-0 z-30"
         style={{
           fontFamily: "'Awesome Serif', 'Cormorant Garamond', Georgia, serif",
           fontWeight: 600,
@@ -34,6 +37,7 @@ export default function Home() {
           marginBottom: "clamp(18px, 3vh, 32px)",
           letterSpacing: "0.01em",
           textShadow: `
+            0 1px 4px rgba(0,0,0,0.85),
             0 0 12px rgba(255, 255, 255, 0.55),
             0 0 28px rgba(255, 255, 255, 0.30),
             0 0 55px rgba(255, 255, 255, 0.15)
