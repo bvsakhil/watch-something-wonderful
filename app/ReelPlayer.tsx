@@ -173,10 +173,12 @@ export function ReelPlayer({ reels, index, isMobile = false, mobileDragOffset = 
           iv_load_policy: 3,
           playsinline: 1,
           enablejsapi: 1,
+          autoplay: shouldAutoPlay.current ? 1 : 0,
         },
         events: {
           onReady: (e: any) => {
             setDuration(e.target.getDuration());
+            // If autoplay playerVar didn't fire (desktop/policy), try explicitly
             if (shouldAutoPlay.current) {
               shouldAutoPlay.current = false;
               e.target.playVideo();
@@ -322,10 +324,16 @@ export function ReelPlayer({ reels, index, isMobile = false, mobileDragOffset = 
             onPause={() => { setPlaying(false); setShowControls(true); }}
             onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime ?? 0)}
             onLoadedMetadata={() => setDuration(videoRef.current?.duration ?? 0)}
+            onLoadedData={() => {
+              if (shouldAutoPlay.current) {
+                shouldAutoPlay.current = false;
+                videoRef.current?.play().catch(() => {});
+              }
+            }}
             onCanPlay={() => {
               if (shouldAutoPlay.current) {
                 shouldAutoPlay.current = false;
-                videoRef.current?.play();
+                videoRef.current?.play().catch(() => {});
               }
             }}
             onClick={togglePlay}
@@ -334,13 +342,19 @@ export function ReelPlayer({ reels, index, isMobile = false, mobileDragOffset = 
 
         {/* YouTube: iFrame API target */}
         {isYouTube && (
-          <div
-            key={(reel as any).videoId}
-            ref={ytContainerRef}
-            className="w-full h-full cursor-pointer"
-            onClick={togglePlay}
-            style={{ pointerEvents: playing ? "none" : "auto" }}
-          />
+          <div key={(reel as any).videoId} className="relative w-full h-full">
+            <div
+              ref={ytContainerRef}
+              className="absolute inset-0"
+            />
+            {/* Transparent overlay: intercepts touch events so swipes bubble up to
+                HomeClient's handlers (cross-origin iframes swallow all touches) */}
+            <div
+              className="absolute inset-0"
+              style={{ zIndex: 2 }}
+              onClick={togglePlay}
+            />
+          </div>
         )}
       </div>
 

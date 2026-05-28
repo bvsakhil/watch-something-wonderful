@@ -59,6 +59,27 @@ export function HomeClient() {
     }, 280);
   };
 
+  const triggerSwipeDown = () => {
+    if (isTransitioning) return;
+    // Phase 1: slide current video down off screen
+    setIsTransitioning(true);
+    setDragOffset(-1000);
+    setTimeout(() => {
+      // Phase 2: change to previous video, place it above screen instantly
+      goPrev();
+      setIsTransitioning(false);
+      setDragOffset(1000); // above screen, no transition
+      // Phase 3: animate new video in from above
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setIsTransitioning(true);
+          setDragOffset(0);
+          setTimeout(() => setIsTransitioning(false), 320);
+        });
+      });
+    }, 280);
+  };
+
   const onTouchStart = (e: React.TouchEvent) => {
     if (isTransitioning) return;
     touchStartY.current = e.touches[0].clientY;
@@ -82,11 +103,11 @@ export function HomeClient() {
 
     e.preventDefault(); // prevent page scroll
     if (dy > 0) {
-      // Swipe up — slight resistance near the top
+      // Swipe up
       setDragOffset(Math.min(dy * 0.88, 800));
     } else {
-      // Slight pull-down resistance
-      setDragOffset(Math.max(dy * 0.25, -55));
+      // Swipe down
+      setDragOffset(Math.max(dy * 0.88, -800));
     }
   };
 
@@ -94,11 +115,15 @@ export function HomeClient() {
     if (isTransitioning) return;
     const dy = touchStartY.current - e.changedTouches[0].clientY;
     const elapsed = Date.now() - touchStartTime.current;
-    const isFlick = elapsed < 350 && dy > 35;
-    const isDrag = dy > 110;
+    const isFlickUp   = elapsed < 350 && dy >  35;
+    const isDragUp    = dy >  110;
+    const isFlickDown = elapsed < 350 && dy < -35;
+    const isDragDown  = dy < -110;
 
-    if (isFlick || isDrag) {
+    if (isFlickUp || isDragUp) {
       triggerSwipeUp();
+    } else if (isFlickDown || isDragDown) {
+      triggerSwipeDown();
     } else {
       // Snap back
       setIsTransitioning(true);
