@@ -273,14 +273,11 @@ export function ReelPlayer({ reels, index, isMobile = false }: Props) {
       ref={containerRef}
       className="crt-scanlines relative overflow-hidden bg-black select-none"
       style={isMobile ? {
-        /* Full-width, fills remaining height below title */
+        /* Full-bleed — no bezel, no radius — exactly like Instagram */
         flex: 1,
         width: "100%",
-        borderRadius: "20px 20px 0 0",
-        boxShadow: `
-          inset 0 0 0 1px rgba(255,255,255,0.06),
-          0 -4px 32px rgba(0,0,0,0.5)
-        `,
+        borderRadius: 0,
+        boxShadow: "none",
       } : {
         /* Landscape 760×480 */
         width: "min(760px, calc(100vw - 48px), calc((100dvh - 290px) * 760 / 480))",
