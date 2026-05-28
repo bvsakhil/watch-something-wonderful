@@ -283,7 +283,7 @@ export function ReelPlayer({ reels, index, isMobile = false, mobileDragOffset = 
       style={isMobile ? {
         flex: 1,
         width: "100%",
-        borderRadius: "22px 22px 0 0",
+        borderRadius: 0,
         boxShadow: "none",
         overflow: "hidden",
       } : {
