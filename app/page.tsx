@@ -31,6 +31,7 @@ export default function Home() {
           fontSize: "clamp(22px, 6vw, 42px)",
           lineHeight: 1.05,
           marginTop: "clamp(28px, 6vh, 88px)",
+          marginBottom: "clamp(10px, 1.5vh, 20px)",
           letterSpacing: "0.01em",
           textShadow: `
             0 0 12px rgba(255, 255, 255, 0.55),
