@@ -6,17 +6,17 @@ type InstagramReel = {
   readonly creatorUrl: string;
 };
 
-type YouTubeReel = {
+type YouTubeVideo = {
   readonly platform: "youtube";
-  readonly videoId: string;
+  readonly src: string;
   readonly platformUrl: string;
   readonly creator: string;
   readonly creatorUrl: string;
 };
 
-export type Reel = InstagramReel | YouTubeReel;
+export type Reel = InstagramReel | YouTubeVideo;
 
-export const REELS: readonly Reel[] = [
+export const INSTAGRAM_REELS: readonly InstagramReel[] = [
   {
     platform: "instagram",
     src: "/reels/reel-1.mp4",
@@ -73,11 +73,16 @@ export const REELS: readonly Reel[] = [
     creator: "omneeworld",
     creatorUrl: "https://www.instagram.com/omneeworld/",
   },
+];
+
+export const YOUTUBE_VIDEOS: readonly YouTubeVideo[] = [
   {
     platform: "youtube",
-    videoId: "X5Izm1LQfw4",
+    src: "/youtube/yt-1.mp4",
     platformUrl: "https://www.youtube.com/watch?v=X5Izm1LQfw4",
     creator: "high5toons",
     creatorUrl: "https://www.youtube.com/@high5toons",
   },
 ];
+
+export const REELS: readonly Reel[] = [...INSTAGRAM_REELS, ...YOUTUBE_VIDEOS];

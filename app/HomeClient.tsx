@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { ReelPlayer } from "./ReelPlayer";
-import { REELS } from "./reels";
+import { INSTAGRAM_REELS, YOUTUBE_VIDEOS } from "./reels";
 
 function shuffled<T>(arr: readonly T[]): T[] {
   const a = [...arr];
@@ -14,7 +14,7 @@ function shuffled<T>(arr: readonly T[]): T[] {
 }
 
 export function HomeClient() {
-  const [reels] = useState(() => shuffled(REELS));
+  const [reels] = useState(() => shuffled([...INSTAGRAM_REELS, ...YOUTUBE_VIDEOS]));
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
 

@@ -3,13 +3,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import type { Reel } from "./reels";
 
-declare global {
-  interface Window {
-    YT: any;
-    onYouTubeIframeAPIReady?: () => void;
-  }
-}
-
 type Props = {
   reels: readonly Reel[];
   index: number;
@@ -86,9 +79,6 @@ function YouTubeIcon() {
 export function ReelPlayer({ reels, index, isMobile = false, mobileDragOffset = 0, mobileIsTransitioning = false }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const ytContainerRef = useRef<HTMLDivElement>(null);
-  const ytPlayerRef = useRef<any>(null);
-  const ytTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const shouldAutoPlay = useRef(false);
   const isFirstRender = useRef(true);
@@ -102,6 +92,7 @@ export function ReelPlayer({ reels, index, isMobile = false, mobileDragOffset = 
   const [showControls, setShowControls] = useState(true);
 
   const progress = duration ? (currentTime / duration) * 100 : 0;
+  const isYouTube = reel.platform === "youtube";
 
   /* Auto-hide controls 2.5 s after last activity while playing */
   const bumpControls = useCallback(() => {
@@ -114,7 +105,6 @@ export function ReelPlayer({ reels, index, isMobile = false, mobileDragOffset = 
 
   useEffect(() => () => {
     if (hideTimer.current) clearTimeout(hideTimer.current);
-    if (ytTimerRef.current) clearInterval(ytTimerRef.current);
   }, []);
 
   /* Reset state when reel changes; auto-play on navigation (not first mount) */
@@ -129,7 +119,6 @@ export function ReelPlayer({ reels, index, isMobile = false, mobileDragOffset = 
     setDuration(0);
     setShowControls(true);
     if (hideTimer.current) clearTimeout(hideTimer.current);
-    if (ytTimerRef.current) { clearInterval(ytTimerRef.current); ytTimerRef.current = null; }
   }, [index]);
 
   /* Fullscreen change listener */
@@ -139,117 +128,14 @@ export function ReelPlayer({ reels, index, isMobile = false, mobileDragOffset = 
     return () => document.removeEventListener("fullscreenchange", onFsChange);
   }, []);
 
-  /* ── YouTube iFrame API ── */
-  useEffect(() => {
-    if (reel.platform !== "youtube") {
-      // Destroy any existing YT player when switching away
-      if (ytPlayerRef.current) {
-        try { ytPlayerRef.current.destroy(); } catch {}
-        ytPlayerRef.current = null;
-      }
-      return;
-    }
-
-    const videoId = reel.videoId;
-
-    const initPlayer = () => {
-      if (!ytContainerRef.current) return;
-      // Destroy old player first
-      if (ytPlayerRef.current) {
-        try { ytPlayerRef.current.destroy(); } catch {}
-        ytPlayerRef.current = null;
-      }
-
-      ytPlayerRef.current = new window.YT.Player(ytContainerRef.current, {
-        videoId,
-        width: "100%",
-        height: "100%",
-        playerVars: {
-          controls: 0,
-          disablekb: 1,
-          fs: 0,
-          rel: 0,
-          modestbranding: 1,
-          iv_load_policy: 3,
-          playsinline: 1,
-          enablejsapi: 1,
-          autoplay: shouldAutoPlay.current ? 1 : 0,
-        },
-        events: {
-          onReady: (e: any) => {
-            setDuration(e.target.getDuration());
-            // If autoplay playerVar didn't fire (desktop/policy), try explicitly
-            if (shouldAutoPlay.current) {
-              shouldAutoPlay.current = false;
-              e.target.playVideo();
-            }
-          },
-          onStateChange: (e: any) => {
-            const { PLAYING, PAUSED, ENDED } = window.YT.PlayerState;
-            if (e.data === PLAYING) {
-              setPlaying(true);
-              bumpControls();
-              if (ytTimerRef.current) clearInterval(ytTimerRef.current);
-              ytTimerRef.current = setInterval(() => {
-                if (ytPlayerRef.current?.getCurrentTime) {
-                  setCurrentTime(ytPlayerRef.current.getCurrentTime());
-                }
-              }, 250);
-            } else if (e.data === PAUSED || e.data === ENDED) {
-              setPlaying(false);
-              setShowControls(true);
-              if (ytTimerRef.current) { clearInterval(ytTimerRef.current); ytTimerRef.current = null; }
-              if (ytPlayerRef.current?.getCurrentTime) {
-                setCurrentTime(ytPlayerRef.current.getCurrentTime());
-              }
-            }
-          },
-        },
-      });
-    };
-
-    if (window.YT?.Player) {
-      initPlayer();
-    } else {
-      // Queue up behind any existing callback
-      const prev = window.onYouTubeIframeAPIReady;
-      window.onYouTubeIframeAPIReady = () => {
-        prev?.();
-        initPlayer();
-      };
-      // Load the script only once
-      if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
-        const tag = document.createElement("script");
-        tag.src = "https://www.youtube.com/iframe_api";
-        document.head.appendChild(tag);
-      }
-    }
-
-    return () => {
-      if (ytTimerRef.current) { clearInterval(ytTimerRef.current); ytTimerRef.current = null; }
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reel]);
-
   /* ── Controls ── */
   const togglePlay = () => {
-    if (reel.platform === "youtube") {
-      if (!ytPlayerRef.current) return;
-      playing ? ytPlayerRef.current.pauseVideo() : ytPlayerRef.current.playVideo();
-      return;
-    }
     const v = videoRef.current;
     if (!v) return;
     v.paused ? v.play() : v.pause();
   };
 
   const toggleMute = () => {
-    if (reel.platform === "youtube") {
-      if (!ytPlayerRef.current) return;
-      if (muted) { ytPlayerRef.current.unMute(); setMuted(false); }
-      else        { ytPlayerRef.current.mute();   setMuted(true);  }
-      return;
-    }
     const v = videoRef.current;
     if (!v) return;
     v.muted = !v.muted;
@@ -257,15 +143,9 @@ export function ReelPlayer({ reels, index, isMobile = false, mobileDragOffset = 
   };
 
   const seek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = parseFloat(e.target.value);
-    if (reel.platform === "youtube") {
-      ytPlayerRef.current?.seekTo(val, true);
-      setCurrentTime(val);
-      return;
-    }
     const v = videoRef.current;
     if (!v) return;
-    v.currentTime = val;
+    v.currentTime = parseFloat(e.target.value);
   };
 
   const toggleFullscreen = () => {
@@ -273,8 +153,6 @@ export function ReelPlayer({ reels, index, isMobile = false, mobileDragOffset = 
     if (!el) return;
     document.fullscreenElement ? document.exitFullscreen() : el.requestFullscreen();
   };
-
-  const isYouTube = reel.platform === "youtube";
 
   return (
     <div
@@ -312,50 +190,30 @@ export function ReelPlayer({ reels, index, isMobile = false, mobileDragOffset = 
           willChange: "transform",
         } : {}}
       >
-        {/* Instagram: native <video> */}
-        {!isYouTube && (
-          <video
-            ref={videoRef}
-            key={(reel as any).src}
-            src={(reel as any).src}
-            playsInline
-            className="w-full h-full object-cover cursor-pointer"
-            onPlay={() => { setPlaying(true); bumpControls(); }}
-            onPause={() => { setPlaying(false); setShowControls(true); }}
-            onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime ?? 0)}
-            onLoadedMetadata={() => setDuration(videoRef.current?.duration ?? 0)}
-            onLoadedData={() => {
-              if (shouldAutoPlay.current) {
-                shouldAutoPlay.current = false;
-                videoRef.current?.play().catch(() => {});
-              }
-            }}
-            onCanPlay={() => {
-              if (shouldAutoPlay.current) {
-                shouldAutoPlay.current = false;
-                videoRef.current?.play().catch(() => {});
-              }
-            }}
-            onClick={togglePlay}
-          />
-        )}
-
-        {/* YouTube: iFrame API target */}
-        {isYouTube && (
-          <div key={(reel as any).videoId} className="relative w-full h-full">
-            <div
-              ref={ytContainerRef}
-              className="absolute inset-0"
-            />
-            {/* Transparent overlay: intercepts touch events so swipes bubble up to
-                HomeClient's handlers (cross-origin iframes swallow all touches) */}
-            <div
-              className="absolute inset-0"
-              style={{ zIndex: 2 }}
-              onClick={togglePlay}
-            />
-          </div>
-        )}
+        <video
+          ref={videoRef}
+          key={reel.src}
+          src={reel.src}
+          playsInline
+          className="w-full h-full object-cover cursor-pointer"
+          onPlay={() => { setPlaying(true); bumpControls(); }}
+          onPause={() => { setPlaying(false); setShowControls(true); }}
+          onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime ?? 0)}
+          onLoadedMetadata={() => setDuration(videoRef.current?.duration ?? 0)}
+          onLoadedData={() => {
+            if (shouldAutoPlay.current) {
+              shouldAutoPlay.current = false;
+              videoRef.current?.play().catch(() => {});
+            }
+          }}
+          onCanPlay={() => {
+            if (shouldAutoPlay.current) {
+              shouldAutoPlay.current = false;
+              videoRef.current?.play().catch(() => {});
+            }
+          }}
+          onClick={togglePlay}
+        />
       </div>
 
       {/* CRT: edge vignette */}
