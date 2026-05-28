@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+/.venv
 /.pnp
 .pnp.*
 .yarn/*
@@ -33,6 +34,10 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# instagram session cookies (never commit)
+/cookies/*
+!/cookies/*.example
+
 # vercel
 .vercel
 
@@ -42,3 +47,5 @@ next-env.d.ts
 
 # claude local settings
 .claude/settings.local.json
+__pycache__/
+projetociberdelia/

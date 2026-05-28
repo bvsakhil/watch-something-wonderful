@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "sync:instagram": "bash scripts/sync-instagram-reels.sh --profile projetociberdelia --count 50 --cookies-file cookies/instagram.txt --browser chrome"
   },
   "dependencies": {
     "next": "16.2.6",
