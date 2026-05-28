@@ -10,7 +10,7 @@ declare global {
   }
 }
 
-type Props = { reels: readonly Reel[]; index: number };
+type Props = { reels: readonly Reel[]; index: number; isMobile?: boolean };
 
 const SERIF = "'Awesome Serif', 'Cormorant Garamond', Georgia, serif";
 
@@ -77,7 +77,7 @@ function YouTubeIcon() {
   );
 }
 
-export function ReelPlayer({ reels, index }: Props) {
+export function ReelPlayer({ reels, index, isMobile = false }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const ytContainerRef = useRef<HTMLDivElement>(null);
@@ -272,7 +272,20 @@ export function ReelPlayer({ reels, index }: Props) {
     <div
       ref={containerRef}
       className="crt-scanlines relative overflow-hidden bg-black select-none"
-      style={{
+      style={isMobile ? {
+        /* Portrait 9:16 — fills available vertical space */
+        width: "min(88vw, calc((100dvh - 160px) * 9 / 16))",
+        aspectRatio: "9 / 16",
+        flexShrink: 0,
+        borderRadius: "clamp(16px, 4vw, 28px)",
+        boxShadow: `
+          inset 0 0 0 1px rgba(255,255,255,0.06),
+          0 0 0 3px rgba(16,16,16,0.97),
+          0 0 0 5px rgba(38,38,38,0.75),
+          0 12px 40px rgba(0,0,0,0.7)
+        `,
+      } : {
+        /* Landscape 760×480 */
         width: "min(760px, calc(100vw - 48px), calc((100dvh - 290px) * 760 / 480))",
         aspectRatio: "760 / 480",
         flexShrink: 0,
