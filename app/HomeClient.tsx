@@ -20,10 +20,10 @@ export function HomeClient() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
 
-  // Lazy-load synced reels manifest after first paint (videos still load one-at-a-time in player)
+  // Lazy-load synced reels manifest after first paint, then re-shuffle everything together
   useEffect(() => {
     import("../data/synced-instagram-reels.json").then(({ default: synced }) => {
-      setReels((current) => [...current, ...shuffled(synced as Reel[])]);
+      setReels(shuffled([...MANUAL_INSTAGRAM_REELS, ...YOUTUBE_VIDEOS, ...(synced as Reel[])]));
     });
   }, []);
 
