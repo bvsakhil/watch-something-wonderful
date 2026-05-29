@@ -156,6 +156,7 @@ export function HomeClient() {
     return (
       <div
         className="relative flex-1 flex flex-col w-full overflow-hidden"
+        style={{ touchAction: "none" }}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
