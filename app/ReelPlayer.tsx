@@ -3,6 +3,13 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import type { Reel } from "./reels";
 
+declare global {
+  interface Window {
+    YT: any;
+    onYouTubeIframeAPIReady?: () => void;
+  }
+}
+
 type Props = {
   reels: readonly Reel[];
   index: number;
@@ -79,6 +86,9 @@ function YouTubeIcon() {
 export function ReelPlayer({ reels, index, isMobile = false, mobileDragOffset = 0, mobileIsTransitioning = false }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const ytContainerRef = useRef<HTMLDivElement>(null);
+  const ytPlayerRef = useRef<any>(null);
+  const ytTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const shouldAutoPlay = useRef(false);
   const isFirstRender = useRef(true);
@@ -96,13 +106,15 @@ export function ReelPlayer({ reels, index, isMobile = false, mobileDragOffset = 
   const progress = duration ? (currentTime / duration) * 100 : 0;
   const isYouTube = reel?.platform === "youtube";
 
-  /* Prefetch next/prev videos without decoding them */
+  /* Prefetch adjacent Instagram reels (YouTube videos have no local src) */
   useEffect(() => {
     if (reels.length < 2) return;
     const adjacent = [
-      reels[(index + 1) % reels.length]?.src,
-      reels[(index - 1 + reels.length) % reels.length]?.src,
-    ];
+      reels[(index + 1) % reels.length],
+      reels[(index - 1 + reels.length) % reels.length],
+    ]
+      .filter((r) => r?.platform === "instagram")
+      .map((r) => (r as any).src as string);
     const links = adjacent.map((href) => {
       const link = document.createElement("link");
       link.rel = "prefetch";
@@ -113,15 +125,15 @@ export function ReelPlayer({ reels, index, isMobile = false, mobileDragOffset = 
     return () => links.forEach((link) => link.remove());
   }, [index, reels]);
 
-  /* Load only the active reel's video src.
+  /* Load only the active reel's video src (Instagram only).
      Set synchronously — no null step, no rAF — so the [videoSrc] effect
      (which calls play()) fires in the same React flush, keeping us inside
      iOS Safari's user-gesture window from the swipe. */
   useEffect(() => {
-    if (!reel?.src) return;
+    if (reel?.platform !== "instagram") return;
     setVideoSrc(reel.src);
     setIsBuffering(true);
-  }, [reel?.src]);
+  }, [(reel as any)?.src]);
 
   /* Auto-hide controls 2.5 s after last activity while playing */
   const bumpControls = useCallback(() => {
@@ -161,12 +173,87 @@ export function ReelPlayer({ reels, index, isMobile = false, mobileDragOffset = 
       shouldAutoPlay.current = false;
       video.preload = "auto";
       video.load();
-      video.play().catch(() => {});   // iOS honours play() here — still in gesture window
+      video.play().catch(() => {});
     } else {
       video.preload = "metadata";
       video.load();
     }
   }, [videoSrc]);
+
+  /* ── YouTube iFrame API ── */
+  useEffect(() => {
+    if (reel?.platform !== "youtube") {
+      if (ytPlayerRef.current) {
+        try { ytPlayerRef.current.destroy(); } catch {}
+        ytPlayerRef.current = null;
+      }
+      if (ytTimerRef.current) { clearInterval(ytTimerRef.current); ytTimerRef.current = null; }
+      return;
+    }
+
+    const videoId = reel.videoId;
+
+    const initPlayer = () => {
+      if (!ytContainerRef.current) return;
+      if (ytPlayerRef.current) {
+        try { ytPlayerRef.current.destroy(); } catch {}
+        ytPlayerRef.current = null;
+      }
+      ytPlayerRef.current = new window.YT.Player(ytContainerRef.current, {
+        videoId,
+        width: "100%",
+        height: "100%",
+        playerVars: {
+          controls: 0, disablekb: 1, fs: 0, rel: 0,
+          modestbranding: 1, iv_load_policy: 3,
+          playsinline: 1, enablejsapi: 1,
+          autoplay: shouldAutoPlay.current ? 1 : 0,
+        },
+        events: {
+          onReady: (e: any) => {
+            setDuration(e.target.getDuration());
+            if (shouldAutoPlay.current) {
+              shouldAutoPlay.current = false;
+              e.target.playVideo();
+            }
+          },
+          onStateChange: (e: any) => {
+            const { PLAYING, PAUSED, ENDED } = window.YT.PlayerState;
+            if (e.data === PLAYING) {
+              setPlaying(true); bumpControls();
+              if (ytTimerRef.current) clearInterval(ytTimerRef.current);
+              ytTimerRef.current = setInterval(() => {
+                if (ytPlayerRef.current?.getCurrentTime)
+                  setCurrentTime(ytPlayerRef.current.getCurrentTime());
+              }, 250);
+            } else if (e.data === PAUSED || e.data === ENDED) {
+              setPlaying(false); setShowControls(true);
+              if (ytTimerRef.current) { clearInterval(ytTimerRef.current); ytTimerRef.current = null; }
+              if (ytPlayerRef.current?.getCurrentTime)
+                setCurrentTime(ytPlayerRef.current.getCurrentTime());
+            }
+          },
+        },
+      });
+    };
+
+    if (window.YT?.Player) {
+      initPlayer();
+    } else {
+      const prev = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => { prev?.(); initPlayer(); };
+      if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
+        const tag = document.createElement("script");
+        tag.src = "https://www.youtube.com/iframe_api";
+        document.head.appendChild(tag);
+      }
+    }
+
+    return () => {
+      if (ytTimerRef.current) { clearInterval(ytTimerRef.current); ytTimerRef.current = null; }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reel]);
 
   /* Fullscreen change listener */
   useEffect(() => {
@@ -177,16 +264,24 @@ export function ReelPlayer({ reels, index, isMobile = false, mobileDragOffset = 
 
   /* ── Controls ── */
   const togglePlay = () => {
+    if (reel?.platform === "youtube") {
+      if (!ytPlayerRef.current) return;
+      playing ? ytPlayerRef.current.pauseVideo() : ytPlayerRef.current.playVideo();
+      return;
+    }
     const v = videoRef.current;
     if (!v) return;
-    if (v.preload === "metadata") {
-      v.preload = "auto";
-      v.load();
-    }
+    if (v.preload === "metadata") { v.preload = "auto"; v.load(); }
     v.paused ? v.play() : v.pause();
   };
 
   const toggleMute = () => {
+    if (reel?.platform === "youtube") {
+      if (!ytPlayerRef.current) return;
+      if (muted) { ytPlayerRef.current.unMute(); setMuted(false); }
+      else        { ytPlayerRef.current.mute();   setMuted(true);  }
+      return;
+    }
     const v = videoRef.current;
     if (!v) return;
     v.muted = !v.muted;
@@ -194,9 +289,15 @@ export function ReelPlayer({ reels, index, isMobile = false, mobileDragOffset = 
   };
 
   const seek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseFloat(e.target.value);
+    if (reel?.platform === "youtube") {
+      ytPlayerRef.current?.seekTo(val, true);
+      setCurrentTime(val);
+      return;
+    }
     const v = videoRef.current;
     if (!v) return;
-    v.currentTime = parseFloat(e.target.value);
+    v.currentTime = val;
   };
 
   const toggleFullscreen = () => {
@@ -243,26 +344,41 @@ export function ReelPlayer({ reels, index, isMobile = false, mobileDragOffset = 
           willChange: "transform",
         } : {}}
       >
-        {/* No key — same element persists across reel changes so play() fires
-            on the live element, still within iOS Safari's gesture window. */}
-        <video
-          ref={videoRef}
-          src={videoSrc ?? ""}
-          preload="metadata"
-          playsInline
-          className="w-full h-full object-cover cursor-pointer"
-          onPlay={() => { setPlaying(true); setIsBuffering(false); bumpControls(); }}
-          onPause={() => { setPlaying(false); setShowControls(true); }}
-          onWaiting={() => setIsBuffering(true)}
-          onPlaying={() => setIsBuffering(false)}
-          onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime ?? 0)}
-          onLoadedMetadata={() => {
-            setDuration(videoRef.current?.duration ?? 0);
-            setIsBuffering(false);
-          }}
-          onCanPlay={() => setIsBuffering(false)}
-          onClick={togglePlay}
-        />
+        {/* Instagram: persistent <video> element (no key = no remount) */}
+        {reel?.platform !== "youtube" && (
+          <video
+            ref={videoRef}
+            src={videoSrc ?? ""}
+            preload="metadata"
+            playsInline
+            className="w-full h-full object-cover cursor-pointer"
+            onPlay={() => { setPlaying(true); setIsBuffering(false); bumpControls(); }}
+            onPause={() => { setPlaying(false); setShowControls(true); }}
+            onWaiting={() => setIsBuffering(true)}
+            onPlaying={() => setIsBuffering(false)}
+            onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime ?? 0)}
+            onLoadedMetadata={() => {
+              setDuration(videoRef.current?.duration ?? 0);
+              setIsBuffering(false);
+            }}
+            onCanPlay={() => setIsBuffering(false)}
+            onClick={togglePlay}
+          />
+        )}
+
+        {/* YouTube: iFrame API target + touch-intercept overlay */}
+        {reel?.platform === "youtube" && (
+          <div key={(reel as any).videoId} className="relative w-full h-full">
+            <div ref={ytContainerRef} className="absolute inset-0" />
+            {/* Transparent overlay so swipe touches bubble up to HomeClient
+                (cross-origin iframes absorb all touch events) */}
+            <div
+              className="absolute inset-0"
+              style={{ zIndex: 2 }}
+              onClick={togglePlay}
+            />
+          </div>
+        )}
       </div>
 
       {isBuffering && videoSrc && (

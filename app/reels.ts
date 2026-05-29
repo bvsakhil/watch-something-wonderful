@@ -8,7 +8,7 @@ type InstagramReel = {
 
 type YouTubeVideo = {
   readonly platform: "youtube";
-  readonly src: string;
+  readonly videoId: string;       // no local file — plays via iFrame embed
   readonly platformUrl: string;
   readonly creator: string;
   readonly creatorUrl: string;
@@ -78,9 +78,16 @@ export const MANUAL_INSTAGRAM_REELS: readonly InstagramReel[] = [
 export const YOUTUBE_VIDEOS: readonly YouTubeVideo[] = [
   {
     platform: "youtube",
-    src: "/youtube/yt-1.mp4",
+    videoId: "X5Izm1LQfw4",
     platformUrl: "https://www.youtube.com/watch?v=X5Izm1LQfw4",
     creator: "high5toons",
     creatorUrl: "https://www.youtube.com/@high5toons",
+  },
+  {
+    platform: "youtube",
+    videoId: "hoDgydWsG8k",
+    platformUrl: "https://www.youtube.com/watch?v=hoDgydWsG8k",
+    creator: "smallbrainedamerican",
+    creatorUrl: "https://www.youtube.com/@SmallBrainedAmerican",
   },
 ];
