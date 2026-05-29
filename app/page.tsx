@@ -37,10 +37,10 @@ export default function Home() {
           marginBottom: "clamp(18px, 3vh, 32px)",
           letterSpacing: "0.01em",
           textShadow: `
-            0 1px 4px rgba(0,0,0,0.85),
-            0 0 12px rgba(255, 255, 255, 0.55),
-            0 0 28px rgba(255, 255, 255, 0.30),
-            0 0 55px rgba(255, 255, 255, 0.15)
+            0 2px 16px rgba(0,0,0,0.22),
+            0 0 32px rgba(0,0,0,0.12),
+            0 0 12px rgba(255,255,255,0.45),
+            0 0 28px rgba(255,255,255,0.22)
           `,
         }}
       >
